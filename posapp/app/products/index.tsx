@@ -6,9 +6,9 @@ const ProductPage = () => {
   return (
     <View>
       <Text>ProductPage</Text>
-      {/* <Link href="/addproduct">
+      <Link href="/products/addproduct">
         <Text>Add Product</Text>
-      </Link> */}
+      </Link>
     </View>
   )
 }

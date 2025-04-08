@@ -1,19 +1,49 @@
 import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 import React from 'react'
 import {router } from 'expo-router'
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
 
 import '../../global.css'
 
 
 const LogIn = () => {
-  return (
-    // <View>
-    //   <Text className='font-bold text-purple-800'>LogIn</Text>
-    //   <Link href="/(tabs)/users/1">
-    //     <Text>Logged In</Text>
-    //   </Link>
-    // </View>
 
+  const [username, setUsername] = React.useState('')
+  const [password, setPassword] = React.useState('')
+  const [ errorMessage, setErrorMessage] = React.useState('')
+
+  const usernameField = (text: string) =>{
+    setUsername(text)
+    // console.log(text)
+  }
+
+  const passwordField = (text: string) =>{
+    setPassword(text)
+  }
+
+  const handleLogin = async () => {
+    await axios.post('http://192.168.110.238:5000/auth/', {
+      username: username,
+      password: password
+    }).then((response) => {
+      if(response.data.error){
+        setErrorMessage(response.data.error)
+        // console.log(response.data.error)
+      }else{
+        console.log('Login successful')
+        AsyncStorage.setItem('token', response.data.token)
+        AsyncStorage.setItem('isLoggedIn', JSON.stringify(true))
+
+        router.push('/(tabs)')
+      }
+    }).catch((error) => {
+      console.error(error.message)
+    })
+  }
+
+  return (
     <View className="flex-1 justify-center items-center bg-gray-100 p-6">
       <View className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
         <Text className="text-2xl font-bold text-gray-900 text-center mb-6">
@@ -22,23 +52,29 @@ const LogIn = () => {
 
         <TextInput
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:border-blue-500"
-          placeholder="Email"
+          placeholder="Username"
           // value={email}
-          // onChangeText={setEmail}
-          keyboardType="email-address"
+          onChangeText={usernameField}
+          // keyboardType="email-address"
         />
+        
 
         <TextInput
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:border-blue-500"
           placeholder="Password"
           // value={password}
-          // onChangeText={setPassword}
+          onChangeText={passwordField}
           secureTextEntry
         />
 
+        {errorMessage ? (
+                  <Text className="text-red-500 mb-4 text-center font-bold">{errorMessage}</Text>
+                ) : null}
+       
+
         <TouchableOpacity
           className="w-full bg-blue-500 text-white p-3 rounded-lg shadow-md active:bg-blue-600"
-          onPress={()=>{router.push('/(tabs)')}}
+          onPress={handleLogin}
         >
           <Text className="text-center text-white font-bold">Login</Text>
         </TouchableOpacity>

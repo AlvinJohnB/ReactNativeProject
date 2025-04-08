@@ -47,14 +47,18 @@ const userSignIn = (req, res, next) => {
         if (result) {
           createToken(user, res, next);
         } else {
-          res.status(400);
-          next(new Error('Invalid Password'));
+          res.json({
+            status: 'error',
+            error: 'Invalid Password',
+          });
+          // next(new Error('Invalid Password'));
         }
       });
     } else {
-      // Wrong Password.
-      res.status(400);
-      next(new Error('No User Exist With This Username'));
+      res.json({
+        status: 'error',
+        error: 'No data found with this username',
+      });
     }
   });
 };

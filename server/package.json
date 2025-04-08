@@ -1,5 +1,5 @@
 {
-  "name": "node-mongo-boilerplate",
+  "name": "posapp-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,7 +9,7 @@
     "dev": "nodemon index.js"
   },
   "keywords": [],
-  "author": "Sania Khan",
+  "author": "Alvin John Bregana",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.4.2",
