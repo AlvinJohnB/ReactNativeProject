@@ -13,9 +13,8 @@ const productSchema = new mongoose.Schema(
     stock: {
       type: String,
     },
-    category: {
-      type: String,
-    },
+    category: [
+      {category: {type: mongoose.Schema.Types.ObjectId, ref: 'Category'}}],
     price: {
       type: String,
     },

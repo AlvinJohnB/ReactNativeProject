@@ -3,12 +3,15 @@ import React from 'react'
 import {router } from 'expo-router'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-
+import Constants from 'expo-constants'
 
 import '../../global.css'
 
 
+
 const LogIn = () => {
+
+  const { apiUrl } = Constants.expoConfig?.extra || {}
 
   const [username, setUsername] = React.useState('')
   const [password, setPassword] = React.useState('')
@@ -24,13 +27,13 @@ const LogIn = () => {
   }
 
   const handleLogin = async () => {
-    await axios.post('http://192.168.110.238:5000/auth/', {
+    await axios.post(`${apiUrl}/auth/`, { 
       username: username,
       password: password
     }).then((response) => {
       if(response.data.error){
         setErrorMessage(response.data.error)
-        // console.log(response.data.error)
+        console.log(response.data.error)
       }else{
         console.log('Login successful')
         AsyncStorage.setItem('token', response.data.token)

@@ -3,9 +3,14 @@ import React, { useState, useEffect } from 'react'
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { CameraView, Camera } from 'expo-camera'
+import { Picker } from '@react-native-picker/picker';
+import axios from 'axios'
+import Constants from 'expo-constants'
 
 
 const AddProduct = () => {
+
+  const { apiUrl } = Constants.expoConfig?.extra || {}
 
   const [formData, setFormData] = useState({
     name: '',
@@ -18,10 +23,27 @@ const AddProduct = () => {
   })
   const [errorMessage, setErrorMessage] = useState('')
   const [selectedImage, setSelectedImage] = useState<string | null>(null) // State for the selected image
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]) 
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null) // Camera permission
   const [isScanning, setIsScanning] = useState(false) // State to toggle camera scanner
   const [cameraRef, setCameraRef] = useState<CameraView | null>(null) // Reference to the camera
+
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/product/fetch-category`);
+        console.log(response.data)
+        const categories = response.data.categories;
+        setCategories(categories); // Assuming you have a state like `const [categories, setCategories] = useState([])`
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
 
   useEffect(() => {
@@ -137,13 +159,13 @@ const handleImagePicker = async () => {
           <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">SKU:</Text>
             <TextInput
-              className="p-2 border border-gray-300 rounded-lg focus:border-blue-500"
+              className="w-1/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
               placeholder="Enter SKU"
               value={formData.sku}
               onChangeText={(value) => handleInputChange('sku', value)}
             />
             <TouchableOpacity
-              className="ml-2 text-center p-3 bg-blue-500 rounded-lg"
+              className="flex-1 ml-2 text-center p-3 bg-blue-500 rounded-lg"
               onPress={() => setIsScanning(true)}
             >
               <Text className="text-white text-center font-bold">Scan</Text>
@@ -169,6 +191,41 @@ const handleImagePicker = async () => {
             </View>
           )}
 
+
+          <View className="flex-row items-center mb-4">
+            <Text className="w-1/3 text-gray-700 font-bold">Category:</Text>
+
+          
+            {formData.category === 'add_category' ? (
+            <TextInput
+              className="w-2/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
+              placeholder="Enter new category"
+                // value={formData.category}
+                // onBlur={(event) => handleInputChange('category', event.nativeEvent.text)}
+              />
+              ) : (
+            <Picker
+              selectedValue={formData.category}
+              onValueChange={(itemValue) => {
+              if (itemValue === 'add_category') {
+                router.push('/products/addcategory'); // Navigate to the add category modal
+              } else {
+                handleInputChange('category', itemValue);
+              }
+              }}
+              style={{ flex: 1 }}
+            >
+              <Picker.Item label="Select Category" value="" />
+              {categories.map((category) => (
+              <Picker.Item key={category.name} label={category.name} value={category.name} />
+              ))}
+              <Picker.Item label="Add Category" value="add_category" />
+            </Picker>
+            )}
+          
+          </View>
+
+          
           <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">Stock:</Text>
             <TextInput
@@ -178,6 +235,7 @@ const handleImagePicker = async () => {
               onChangeText={(value) => handleInputChange('stock', value)}
             />
           </View>
+
 
           <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">Price:</Text>
@@ -201,7 +259,7 @@ const handleImagePicker = async () => {
             />
           </View>
 
-          <View className="flex-row items-center mb-4">
+          {/* <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">Category:</Text>
             <TextInput
               className="w-2/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
@@ -209,7 +267,11 @@ const handleImagePicker = async () => {
               value={formData.category}
               onChangeText={(value) => handleInputChange('category', value)}
             />
-          </View>
+          </View> */}
+
+          
+    
+          
 
           
 

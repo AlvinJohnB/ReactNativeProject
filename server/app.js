@@ -25,5 +25,7 @@ app.get('/', (req, res) => {
 });
 app.use('/auth', Router.SigninRouter);
 app.use('/article', Router.articleRouter); 
+app.use('/product', Router.productRouter); // Use the product router
 
-export default app;
+
+export default app; 

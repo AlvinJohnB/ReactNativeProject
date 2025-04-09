@@ -2,10 +2,12 @@ import UserModel from './userSchema.js';
 import ProductModel from './productSchema.js';
 import CostumerModel from './costumerSchema.js';
 import OrderModel from './orderschema.js';
+import CategoryModel from './categorySchema.js';
 
 export default {
   UserModel,
   ProductModel,
   CostumerModel,
-  OrderModel
+  OrderModel,
+  CategoryModel
 };
