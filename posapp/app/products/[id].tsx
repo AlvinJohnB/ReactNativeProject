@@ -1,6 +1,6 @@
 import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, Image, PermissionsAndroid, Platform, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { CameraView, Camera } from 'expo-camera'
 import { Picker } from '@react-native-picker/picker';
@@ -8,9 +8,9 @@ import axios from 'axios'
 import Constants from 'expo-constants'
 import * as FileSystem from 'expo-file-system';
 
+const ProductPage = () => {
 
-const AddProduct = () => {
-
+   const { id } = useLocalSearchParams();
   const { apiUrl } = Constants.expoConfig?.extra || {}
 
   const [formData, setFormData] = useState({
@@ -31,8 +31,30 @@ const AddProduct = () => {
 
   const [loading, setLoading] = useState(false); // State to track loading status
 
+  const getProduct = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/product/fetch-product/${id}`);
+
+      // console.log(response.data.product);
+      const product = response.data.product;
+      setFormData((prevData) => ({
+        ...prevData,
+        name: product.name,
+        sku: product.sku,
+        stock: product.stock,
+        price: product.price,
+        category: product.category,
+        retail_price: product.retail_price,
+      }));
+      setSelectedImage(product.imageUrl); // Set the selected image URI from the response
+    } catch (error) {
+      console.error('Error fetching product:', error);
+    }
+  }
+
 
   useEffect(() => {
+    
     const fetchCategories = async () => {
       try {
         const response = await axios.get(`${apiUrl}/product/fetch-category`);
@@ -43,7 +65,7 @@ const AddProduct = () => {
         console.error('Error fetching categories:', error);
       }
     };
-
+    getProduct();
     fetchCategories();
   }, []);
 
@@ -183,13 +205,25 @@ const handleImagePicker = async () => {
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
         <View className="w-full bg-white rounded-lg shadow-lg p-6">
           <Text className="text-2xl font-bold text-gray-900 text-center mb-6">
-            Add Product
+            Product Details
           </Text>
 
           {/* Error Message */}
           {errorMessage ? (
             <Text className="text-red-500 text-center mb-4">{errorMessage}</Text>
           ) : null}
+
+          {/* Display Selected Image */}
+          {selectedImage && (
+            <View className="items-center flex-row mb-4">
+              <View className='w-1/3'></View>
+              <Image
+                source={{ uri: selectedImage }}
+                className="w-32 h-32 rounded-lg"
+                style={{ resizeMode: 'cover' }}
+              />
+            </View>
+          )}
 
           {/* Inline Form */}
           <View className="flex-row items-center mb-4">
@@ -204,16 +238,7 @@ const handleImagePicker = async () => {
             </TouchableOpacity>
           </View>
 
-          {/* Display Selected Image */}
-          {selectedImage && (
-            <View className="items-center mb-4">
-              <Image
-                source={{ uri: selectedImage }}
-                className="w-32 h-32 rounded-lg"
-                style={{ resizeMode: 'cover' }}
-              />
-            </View>
-          )}
+          
 
           <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">Product Name:</Text>
@@ -346,4 +371,4 @@ const handleImagePicker = async () => {
   )
 }
 
-export default AddProduct
+export default ProductPage

@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import Connect from './connection/connect.js'; // Import the Connect function
 import Router from './Routes/Router.js';
 import setupSwagger from './swaggerConfig.js';
+import path from 'path'; // Import path module
 
 const app = express();
 // Setup Swagger documentation
@@ -27,5 +28,6 @@ app.use('/auth', Router.SigninRouter);
 app.use('/article', Router.articleRouter); 
 app.use('/product', Router.productRouter); // Use the product router
 
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 export default app; 

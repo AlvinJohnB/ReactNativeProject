@@ -11,17 +11,24 @@ const productSchema = new mongoose.Schema(
       unique: true,
     },
     stock: {
-      type: String,
+      type: Number,
     },
-    category: [
-      {category: {type: mongoose.Schema.Types.ObjectId, ref: 'Category'}}],
     price: {
-      type: String,
+      type: Number,
+      required: true,
+    },
+    retail_price: {
+      type: Number,
+      required: true,
+    },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
     },
     imageUrl: {
       type: String,
       default: '',
-    },
+    }
   },
   {
     timestamps: true,
