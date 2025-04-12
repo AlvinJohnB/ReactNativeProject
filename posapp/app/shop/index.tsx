@@ -30,9 +30,67 @@ const ShopPage = () => {
           }
   ]); // List of products
 
+  const [filteredData, setFilteredData] = useState(products); // State for filtered data
+  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+ 
+  const handleSearch = (query: string) => {
+      setSearchQuery(query);
+      if (query.trim() === '') {
+        setFilteredData(products); // Reset to full product list if query is empty
+      } else {
+        const filtered = products.filter((item) =>
+          item.name.toLowerCase().includes(query.toLowerCase()) // Filter by product name
+          // item.category.name.toLowerCase().includes(query.toLowerCase()) // Filter by category name
+        );
+        setFilteredData(filtered);
+      }
+    };
+
+    const [hasPermission, setHasPermission] = useState(false); // Camera permission
+    const [isScanning, setIsScanning] = useState(false); // Barcode scanner state
+    const [scanned, setScanned] = useState(false); // Prevent multiple scans
+
+    useEffect(() => {
+      const getCameraPermission = async () => {
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        setHasPermission(status === 'granted');
+      };
+      getCameraPermission();
+    }, []);
+
+    const handleBarCodeScanned = ({ data }: { data: string }) => {
+      // setIsScanning(false); // Stop scanning
+      if (scanned) return; // Prevent multiple scans
+      setScanned(true); // Set scanned to true
+      const scannedProduct = products.find((item) => item.sku === data);
+      if (scannedProduct) {
+        // alert(`${scannedProduct.name} found. Do you want to add it to the cart?`);
+        addToCartByBarcode(scannedProduct); // Add scanned product to cart
+      } else {
+        alert('Product not found');
+      }
+      setTimeout(() => setScanned(false), 1000); // Reset scanned state after 2 seconds
+      
+    };
+
+    // Add product to cart by barcode
+  const addToCartByBarcode = (product: typeof products[0]) => {
+    setCart((prevCart) => {
+      const existingProduct = prevCart.find((item) => item.sku === product.sku);
+      if (existingProduct) {
+        // If product exists, increment its quantity
+        return prevCart.map((item) =>
+          item.sku === product.sku ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        // If product doesn't exist, add it with quantity 1
+        return [...prevCart, { ...product, quantity: 1 }];
+      }
+    });
+  };
 
 
-  const [cart, setCart] = useState<{ _id: string; name: string; price: number; quantity: number }[]>([]); // List of items in the cart
+  const [cart, setCart] = useState<{ _id: string; name: string; price: number; quantity: number; sku: string }[]>([]); // List of items in the cart
   const [isPortrait, setIsPortrait] = useState(true); // Track orientation
 
   const fetchProducts = async () => {
@@ -48,6 +106,9 @@ const ShopPage = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  
+
 
   // Add product to cart
   const addToCart = (product: typeof products[0]) => {
@@ -160,21 +221,49 @@ const ShopPage = () => {
   return (
     <View className="flex-1 p-5">
 
-        {/* Search Bar */}
-        <TextInput
-        placeholder="Search products..."
-        // value={searchQuery}
-        // onChangeText={handleSearch}
-        className='p-3 mx-4 mb-0 mt-4 border border-gray-300 rounded-lg focus:border-blue-500'
-        />
+       
     
       <View className={`flex-1 ${isPortrait ? 'flex-col' : 'flex-row justify-between'}`}>
         {/* Products Section */}
         <View className={`flex-1 ${isPortrait ? 'mb-4' : 'mr-4'}`}>
-          <Text className="text-lg font-bold mb-2">Products</Text>
+
+          <Text className="text-lg font-bold">Products</Text>
+               {/* Search Bar */}
+               <TextInput
+            placeholder="Search products..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+            className='border border-gray-300 rounded-lg focus:border-blue-500'
+            />
+
+          <TouchableOpacity
+                    className="bg-blue-500 p-2 rounded-lg mt-1 mb-1"
+                    onPress={() => setIsScanning(true)}
+          >
+          <Text className="text-white font-bold">Scan</Text>
+        </TouchableOpacity>
+
+        {/* Camera for Barcode Scanning */}
+        {isScanning && hasPermission && (
+          <View className="w-full mb-4 p-2">
+          <CameraView
+            style={{ height: 150, width: '100%' }}  
+            className='mb-1'  
+            onBarcodeScanned={handleBarCodeScanned}
+          />
+
+          <TouchableOpacity
+          className="absolute top-2 right-2 bg-red-500 p-2 rounded-lg"
+          onPress={() => setIsScanning(false)}
+        >
+          <Text className="text-white font-bold">Cancel</Text>
+        </TouchableOpacity>
+        </View>
+        )}
+      
 
           <FlatList
-            data={products}
+            data={searchQuery ? filteredData : products} // Use filtered data if search query is presen
             renderItem={renderProduct}
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
