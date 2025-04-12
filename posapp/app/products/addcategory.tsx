@@ -3,6 +3,7 @@ import React, {useState} from 'react'
 import WheelColorPicker from 'react-native-wheel-color-picker';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 
 const AddCategory = () => {
 
@@ -23,7 +24,6 @@ const AddCategory = () => {
             setErrorMessage('Category name is required');
             return;
         }
-        console.log(`Category name: ${categoryName}, Color: ${color}`);
         axios.post(`${apiUrl}/product/add-category`, {
             name: categoryName,
             color: color
@@ -31,6 +31,8 @@ const AddCategory = () => {
             console.log('Category added successfully', response.data);
         }).catch((error) => {
             console.error('Error adding category', error);
+        }).finally(() => {
+            router.push('/products')
         });
     }
     

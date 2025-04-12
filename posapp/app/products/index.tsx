@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, FlatList, TextInput, Image, TouchableOpacity, Dimensions } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import axios from 'axios'; 
@@ -32,6 +32,25 @@ const ProductPage = () => {
     updatedAt: "2025-04-10T06:22:37.709Z",
     __v: 0
   }]); // State to hold product data
+
+  const [filteredData, setFilteredData] = useState<typeof productData>([]); // State for filtered data
+  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredData(productData); // Reset to full product list if query is empty
+    } else {
+      const filtered = productData.filter((item) =>
+        item.name.toLowerCase().includes(query.toLowerCase()) || // Filter by product name
+        item.category.name.toLowerCase().includes(query.toLowerCase()) // Filter by category name
+      );
+      setFilteredData(filtered);
+    }
+  };
+
+
+
 
   // Fetch product data from the API
   const fetchProducts = async () => {
@@ -111,8 +130,17 @@ const ProductPage = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
+
+      {/* Search Bar */}
+          <TextInput
+          placeholder="Search products..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+          className='p-3 mx-4 mb-0 mt-4 border border-gray-300 rounded-lg focus:border-blue-500'
+        />
+
       <FlatList
-        data={productData}
+        data={searchQuery ? filteredData : productData} // Use filtered data if search query is present
         renderItem={renderProduct}
         keyExtractor={(item) => item._id} // Use the unique ID as the key
         numColumns={numColumns} // Dynamically set the number of columns

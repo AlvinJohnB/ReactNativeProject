@@ -1,13 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
-import { Tabs } from 'expo-router'
+import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Stack } from 'expo-router';
 
-const TabsLayout = () => {
+const TabLayout = () => {
   return (
-    <Tabs>
-        <Tabs.Screen name="index" options={{title: "Home"}}/>
-    </Tabs>
-  )
-}
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Home Screen */}
+      <Stack.Screen name="index" options={{ title: "Home" }} />
 
-export default TabsLayout
+      {/* Uncomment or add more screens as needed */}
+      {/* <Stack.Screen name="products" options={{ title: "Products" }} /> */}
+    </Stack>
+  );
+};
+
+export default TabLayout;
