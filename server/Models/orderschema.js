@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-// import Product from './productSchema.js';
 
 
 const orderSchema = new mongoose.Schema(
@@ -21,6 +20,12 @@ const orderSchema = new mongoose.Schema(
       }
     ],
     total: {
+      type: Number,
+    },
+    change: {
+      type: Number,
+    },
+    cash_tendered: {
       type: Number,
     },
     mode_of_payment: {

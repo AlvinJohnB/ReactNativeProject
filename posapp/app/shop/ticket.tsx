@@ -127,7 +127,6 @@ const TicketPage = () => {
       });
   
       if (response.status === 201) {
-        console.log ('Order added to queue:', response.data);
         alert('Order added to queue successfully!');
         setCart([]); // Clear the cart after successful submission
       } else {
@@ -138,9 +137,6 @@ const TicketPage = () => {
       alert('An error occurred while adding the order to the queue.');
     }
   };
-
-  
-
 
   // Add product to cart
   const addToCart = (product: typeof products[0]) => {
@@ -177,7 +173,7 @@ const TicketPage = () => {
 
   // Calculate total price
   const calculateTotalPrice = () => {
-    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    return parseFloat(cart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2));
   };
 
   // Detect orientation changes
