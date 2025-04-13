@@ -190,7 +190,59 @@ OrderRouter.put('/update-to-completed/:id', async (req, res, next) => {
     const order = await Model.OrderModel.findById(id);
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found.' });
+      // If order not found, use add-completed-order logic
+      const { items, total, change, cash_tendered, mode_of_payment } = req.body;
+
+      if (!items || items.length === 0) {
+        return res.status(400).json({ message: 'No items in the order.' });
+      }
+
+      // Validate product IDs
+      const productIds = items.map((item) => item.productId);
+      const products = await Model.ProductModel.find({ _id: { $in: productIds } });
+
+      if (products.length !== items.length) {
+        return res.status(400).json({ message: 'Some products are invalid or not found.' });
+      }
+
+      // Generate a unique order ID starting from 0001
+      const currentYear = new Date().getFullYear();
+      const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+      const prefix = `${currentYear}${currentMonth}`;
+
+      const lastOrder = await Model.OrderModel.findOne({ orderID: { $regex: `^${prefix}` } }).sort({ createdAt: -1 });
+      let orderID = `${prefix}0001`;
+      if (lastOrder && lastOrder.orderID) {
+        const lastOrderNumber = parseInt(lastOrder.orderID.slice(6), 10);
+        orderID = `${prefix}${(lastOrderNumber + 1).toString().padStart(4, '0')}`;
+      }
+
+      // Update stock for each product
+      for (const item of items) {
+        const product = products.find((p) => p._id.toString() === item.productId);
+        if (product) {
+          product.stock -= item.quantity;
+          await product.save();
+        }
+      }
+
+      // Create a new order with completed status
+      const newOrder = new Model.OrderModel({
+        orderID: orderID,
+        products: items.map((item) => ({
+          product: item.productId,
+          quantity: item.quantity,
+        })),
+        total,
+        change,
+        cash_tendered,
+        mode_of_payment,
+        status: 'completed', // Set the status to completed
+      });
+
+      const savedOrder = await newOrder.save();
+
+      return res.status(201).json({ message: 'Completed order added successfully.', order: savedOrder });
     }
 
     if (order.status === 'completed') {
