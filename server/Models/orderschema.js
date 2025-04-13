@@ -6,7 +6,7 @@ const orderSchema = new mongoose.Schema(
   {
     orderID: {
       type: String,
-      required: true,
+      // required: true,
     },
     products:[
       {
@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema(
         },
       }
     ],
-    price: {
+    total: {
       type: Number,
     },
     mode_of_payment: {

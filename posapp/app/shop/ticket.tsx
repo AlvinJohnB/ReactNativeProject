@@ -1,15 +1,13 @@
-import { View, Image, Text, TextInput, FlatList, TouchableOpacity, Dimensions, Modal, Button } from 'react-native';
+import { View, Image, Text, TextInput, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { router } from 'expo-router';
+import router from 'expo-router';
 import Constants from 'expo-constants';
 import { CameraView, Camera } from 'expo-camera'
 
-const ShopPage = () => {
+const TicketPage = () => {
 
-  
     const apiUrl = Constants.expoConfig?.extra?.apiUrl || ''; // Get API URL from environment variables with fallback
-    const queueResetTimeOut = Constants.expoConfig?.extra?.queueResetTimeOut || 30000; // Get queue reset timeout from environment variables with fallback
     
     type Product = {
         _id: string;
@@ -74,6 +72,7 @@ const ShopPage = () => {
       
     };
 
+    // Add product to cart by barcode
   const addToCartByBarcode = (product: typeof products[0]) => {
     setCart((prevCart) => {
       const existingProduct = prevCart.find((item) => item.sku === product.sku);
@@ -89,16 +88,20 @@ const ShopPage = () => {
     });
   };
 
-
-  const [cart, setCart] = useState<{ _id: string; name: string; price: number; quantity: number; sku: string }[]>([]); // List of items in the cart
-  
+  type Cart = {
+    _id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sku: string;
+  }
+  const [cart, setCart] = useState<Cart[]>([]); // List of items in the cart
   const [isPortrait, setIsPortrait] = useState(true); // Track orientation
 
   const fetchProducts = async () => {
     try {
       const response = await axios.get(`${apiUrl}/product/fetch-products`); // Fetch products from the API
       setProducts(response.data.data);
-    console.log('Products fetched:', response.data.data); // Log the fetched products
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -108,23 +111,33 @@ const ShopPage = () => {
     fetchProducts();
   }, []);
 
-  const [queue, setQueue] = useState([]); // State for queue
-  const fetchQueue = async () => {
-    try {
-      const response = await axios.get(`${apiUrl}/order/queue`); // Fetch queue from the API
-      setQueue(response.data.orders); // Set queue state
-      console.log('Queue fetched:', response.data); // Log the fetched queue
-    } catch (error) {
-      console.error('Error fetching queue:', error);
+  const addToQueue = async () => {
+    if (cart.length === 0) {
+      alert('Cart is empty. Please add items to the cart before adding to the queue.');
+      return;
     }
-  }
-  useEffect(() => {
-    fetchQueue(); // Initial fetch
-    const interval = setInterval(fetchQueue, queueResetTimeOut); 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
-  }, []); // Fetch queue on component mount
-
-
+  
+    try {
+      const response = await axios.post(`${apiUrl}/order/add-to-queue`, {
+        items: cart.map((item) => ({
+          productId: item._id,
+          quantity: item.quantity,
+        })),
+        total: calculateTotalPrice(),
+      });
+  
+      if (response.status === 201) {
+        console.log ('Order added to queue:', response.data);
+        alert('Order added to queue successfully!');
+        setCart([]); // Clear the cart after successful submission
+      } else {
+        alert('Failed to add order to queue. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding order to queue:', error);
+      alert('An error occurred while adding the order to the queue.');
+    }
+  };
 
   
 
@@ -143,6 +156,7 @@ const ShopPage = () => {
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
+
   };
 
   // Remove product from cart
@@ -237,88 +251,11 @@ const ShopPage = () => {
     </View>
   );
 
-  // render Quweueued Orders
-  const renderQueueItem = ({ item }: {item: { _id: string; orderID: string; total: number; products: Array<any>}}) => (
-    <View className="flex-row justify-between items-center p-3 mb-2 bg-gray-100 rounded-lg shadow">
-      <View className="flex-1">
-        <Text className="text-xs text-gray-500">Name</Text>
-        <Text className="text-base">{item.orderID}</Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-xs text-gray-500">Items</Text>
-        <Text className="text-base">{item.products.length}</Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-xs text-gray-500">Total</Text>
-        <Text className="text-base">PHP {item.total}</Text>
-      </View>
-      
-      <TouchableOpacity
-        className="bg-blue-500 px-3 py-2 rounded-lg"
-        onPress={() => {router.push({ pathname: '/shop/[id]', params: { id: item._id } }); // Navigate to order details page
-          setQueueModalVisible(false); // Close the modal after adding items to the cart
-        } }
-      >
-        <Text className="text-white font-bold">Select</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const [isQueueModalVisible, setQueueModalVisible] = useState(true); // State for queue modal
-
   return (
     <View className="flex-1 p-5">
 
-      {/* Queued Orders Modal */}
-      <Modal
-        visible={isQueueModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setQueueModalVisible(false)} // Close the modal when the user presses back
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          }}
-        >
-          <View
-            style={{
-              width: '70%',
-              height: '70%',
-              backgroundColor: 'white',
-              borderRadius: 10,
-              padding: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-              Queued Orders
-            </Text>
-
-            <FlatList
-            data={queue} // Use filtered data if search query is presen
-            renderItem={renderQueueItem}
-            keyExtractor={(item) => item._id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 50 }}
-          />
-
-            
-            <View className='mt-2' style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Button title="Close" onPress={() => setQueueModalVisible(false)} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-      
-
+       
+    
       <View className={`flex-1 ${isPortrait ? 'flex-col' : 'flex-row justify-between'}`}>
         {/* Products Section */}
         <View className={`flex-1 ${isPortrait ? 'mb-4' : 'mr-4'}`}>
@@ -358,26 +295,13 @@ const ShopPage = () => {
         )}
       
 
-          {/* <FlatList
+          <FlatList
             data={searchQuery ? filteredData : products} // Use filtered data if search query is presen
             renderItem={renderProduct}
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 50 }}
-          /> */}
-
-          <View className="flex-row justify-between mb-4">
-          <View className="bg-white p-4 rounded-lg shadow-md flex-1 mr-2">
-            <Text className="text-gray-700 text-lg font-bold">Products</Text>
-            <Text className="text-blue-500 text-2xl font-bold mt-2">{products.length}</Text>
-          </View>
-          <View className="bg-white p-4 rounded-lg shadow-md flex-1 ml-2">
-            <Text className="text-gray-700 text-lg font-bold">Queued Orders</Text>
-            <Text className="text-blue-500 text-2xl font-bold mt-2">{queue.length}</Text>
-          </View>
-        </View>
-
-
+          />
         </View>
 
         {/* Cart Section */}
@@ -396,12 +320,15 @@ const ShopPage = () => {
       {/* Fixed Bottom Section */}
       <View className="absolute bottom-0 left-0 right-0 bg-gray-100 p-4 border-t border-gray-300 flex-row justify-between items-center">
         <Text className="text-lg font-bold">Total: PHP {calculateTotalPrice().toFixed(2)}</Text>
-        <TouchableOpacity className="bg-blue-500 px-4 py-2 rounded-lg">
-          <Text className="text-white font-bold">Checkout</Text>
+        <TouchableOpacity 
+          className="bg-blue-500 px-4 py-2 rounded-lg"
+          onPress={addToQueue} // Add to queue button
+          >
+          <Text className="text-white font-bold">Add to Queue</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-export default ShopPage;
+export default TicketPage;

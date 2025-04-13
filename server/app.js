@@ -26,8 +26,8 @@ app.get('/', (req, res) => {
 });
 app.use('/auth', Router.SigninRouter);
 app.use('/article', Router.articleRouter); 
-app.use('/product', Router.productRouter); // Use the product router
-
+app.use('/product', Router.productRouter); // Use the product route
+app.use('/order', Router.OrderRouter); // Use the order route
 app.use('/uploads', express.static(path.resolve('uploads')));
 
 export default app; 

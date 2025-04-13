@@ -1,0 +1,94 @@
+import express from 'express';
+import Model from '../Models/Model.js'; // Assuming you have an OrderModel and ProductModel in your Models
+import mongoose from 'mongoose';
+
+const OrderRouter = express.Router();
+
+// Add order to queue
+OrderRouter.post('/add-to-queue', async (req, res, next) => {
+  const { items, total } = req.body;
+
+  if (!items || items.length === 0) {
+    return res.status(400).json({ message: 'No items in the order.' });
+  }
+
+  try {
+    // Validate product IDs and check stock
+    const productIds = items.map((item) => item.productId);
+    const products = await Model.ProductModel.find({ _id: { $in: productIds } });
+
+    if (products.length !== items.length) {
+      return res.status(400).json({ message: 'Some products are invalid or not found.' });
+    }
+
+    // Check stock availability
+    for (const item of items) {
+      const product = products.find((p) => p._id.toString() === item.productId);
+      if (!product) {
+        return res.status(404).json({ message: `Product with ID ${item.productId} not found.` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+        });
+      }
+    }
+
+    // // Deduct stock for each product
+    // for (const item of items) {
+    //   const product = products.find((p) => p._id.toString() === item.productId);
+    //   product.stock -= item.quantity;
+    //   await product.save();
+    // }
+
+    // Generate a unique order ID starting from 0001
+    const currentYear = new Date().getFullYear();
+    const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `${currentYear}${currentMonth}`;
+
+    const lastOrder = await Model.OrderModel.findOne({ orderID: { $regex: `^${prefix}` } }).sort({ createdAt: -1 });
+    let orderID = `${prefix}0001`;
+    if (lastOrder && lastOrder.orderID) {
+      const lastOrderNumber = parseInt(lastOrder.orderID.slice(6), 10);
+      orderID = `${prefix}${(lastOrderNumber + 1).toString().padStart(4, '0')}`;
+    }
+
+    // Create a new order
+    const newOrder = new Model.OrderModel({
+      orderID: orderID,
+      products: items.map((item) => ({
+        product: item.productId,
+        quantity: item.quantity,
+      })),
+      total,
+      status: 'pending', // Set the initial status of the order
+      createdAt: new Date(),
+    });
+
+    const savedOrder = await newOrder.save();
+
+    res.status(201).json({ message: 'Order added to queue successfully.', order: savedOrder });
+  } catch (error) {
+    console.error('Error adding order to queue:', error);
+    next(error);
+  }
+});
+
+// Fetch orders in the queue
+OrderRouter.get('/queue', async (req, res, next) => {
+  try {
+    const orders = await Model.OrderModel.find({ status: 'pending' })
+      .sort({ createdAt: 1 })
+      .populate({
+        path: 'products.product',
+        select: 'name sku price retail_price', // Select only the specified fields
+      });
+
+    res.status(200).json({ message: 'Orders in queue fetched successfully.', orders });
+  } catch (error) {
+    console.error('Error fetching orders in queue:', error);
+    next(error);
+  }
+});
+
+export default OrderRouter;

@@ -15,7 +15,26 @@ const ProductPage = () => {
   const numColumns = Math.floor(width / 180); // Each card is approximately 180px wide
   const cardWidth = width / numColumns - 16; // Subtract spacing between cards
 
-  const [productData, setProductData] = useState([{
+  type Product = {
+    _id: string;
+    name: string;
+    sku: string;
+    price: number;
+    stock: number;
+    category: {
+      _id: string;
+      name: string;
+      color: string;
+      __v: number;
+    };
+    imageUrl: string;
+    createdAt: string;
+    updatedAt: string;
+    __v: number;
+    isPlaceholder?: boolean; // Add optional isPlaceholder property
+  };
+
+  const [productData, setProductData] = useState<Product[]>([{
     _id: "67f763ad96f6047ef70b682a",
     name: "Testing",
     sku: "3432423",
@@ -51,7 +70,6 @@ const ProductPage = () => {
 
 
 
-
   // Fetch product data from the API
   const fetchProducts = async () => {
     try {
@@ -67,90 +85,117 @@ const ProductPage = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
-  
+
+  // Add placeholders to maintain the number of columns
+  const addPlaceholders = (data: typeof productData, numColumns: number) => {
+    const totalItems = data.length;
+    const remainder = totalItems % numColumns;
+
+    if (remainder !== 0) {
+      const placeholders = Array(numColumns - remainder).fill({ _id: `placeholder-${Math.random()}`, isPlaceholder: true });
+      return [...data, ...placeholders];
+    }
+
+    return data;
+  };
 
 
 
   // Render each product card
-  const renderProduct = ({ item }: { item: typeof productData[0] }) => (
-    <TouchableOpacity
-      onPress={() => router.push({
-        pathname: '/products/[id]', 
-        params: { id: item._id.toString() }, // Pass the product ID as a parameter
-      })} // Navigate to product details page
-      key={item._id}
-      style={{
-        width: cardWidth, // Dynamically set card width
-        backgroundColor: 'white',
-        borderColor: item.category.color,
-        borderWidth: 1,
-        borderRadius: 8,
-        padding: 8,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-      }}
-    >
-      <Image
-        source={{ uri: `${apiUrl}/uploads/${item.imageUrl}` }}
+  const renderProduct = ({ item }: { item: typeof productData[0] }) => {
+    if (item.isPlaceholder) {
+      // Render an invisible placeholder card
+      return (
+        <View
+          style={{
+            width: cardWidth,
+            marginBottom: 16,
+            backgroundColor: 'transparent',
+          }}
+        />
+      );
+    }
+  
+    return (
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: '/products/[id]',
+            params: { id: item._id.toString() },
+          })
+        }
+        key={item._id}
         style={{
-          width: '100%',
-          height: 120,
+          width: cardWidth,
+          backgroundColor: 'white',
+          borderColor: item.category.color,
+          borderWidth: 1,
           borderRadius: 8,
-          marginBottom: 8,
+          padding: 8,
+          marginBottom: 16,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 2,
         }}
-        resizeMode="cover"
-      />
-      <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>{item.name}</Text>
-      <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>{item.category.name}</Text>
-      <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#111827' }}>PHP {item.price}</Text>
-    
-      <Text
-      style={{
-        position: 'absolute',
-        bottom: 8,
-        right: 8,
-        backgroundColor: item.stock === 0 ? '#dc3545' : '#3b82f6', // Red if stock is zero, blue otherwise
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-      }}
-    >
-      {item.stock === 0 ? 'Out of stock' : `Stock: ${item.stock}`}
-    </Text>
-    
-    </TouchableOpacity>
-  );
-
+      >
+        <Image
+          source={{ uri: `${apiUrl}/uploads/${item.imageUrl}` }}
+          style={{
+            width: '100%',
+            height: 120,
+            borderRadius: 8,
+            marginBottom: 8,
+          }}
+          resizeMode="cover"
+        />
+        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>{item.name}</Text>
+        <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>{item.category.name}</Text>
+        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#111827' }}>PHP {item.price}</Text>
+  
+        <Text
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            backgroundColor: item.stock === 0 ? '#dc3545' : '#3b82f6',
+            color: 'white',
+            fontSize: 12,
+            fontWeight: 'bold',
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 8,
+          }}
+        >
+          {item.stock === 0 ? 'Out of stock' : `Stock: ${item.stock}`}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+  
   return (
     <View style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
-
       {/* Search Bar */}
-          <TextInput
-          placeholder="Search products..."
-          value={searchQuery}
-          onChangeText={handleSearch}
-          className='p-3 mx-4 mb-0 mt-4 border border-gray-300 rounded-lg focus:border-blue-500'
-        />
-
+      <TextInput
+        placeholder="Search products..."
+        value={searchQuery}
+        onChangeText={handleSearch}
+        className="p-3 mx-4 mb-0 mt-4 border border-gray-300 rounded-lg focus:border-blue-500"
+      />
+  
       <FlatList
-        data={searchQuery ? filteredData : productData} // Use filtered data if search query is present
+        data={addPlaceholders(searchQuery ? filteredData : productData, numColumns)} // Add placeholders to the data
         renderItem={renderProduct}
         keyExtractor={(item) => item._id} // Use the unique ID as the key
         numColumns={numColumns} // Dynamically set the number of columns
         columnWrapperStyle={{ justifyContent: 'space-around', paddingHorizontal: 8 }} // Add spacing between rows
         contentContainerStyle={{ paddingBottom: 80, paddingTop: 16 }} // Add padding to avoid overlapping with the button
       />
-
+  
       {/* Add Product Button */}
       <TouchableOpacity
-        onPress={() => router.push('/products/addproduct')} // Navigate to Add Product page
+        onPress={() => router.push('/products/addproduct')}
         style={{
           position: 'absolute',
           bottom: 16,
@@ -172,6 +217,5 @@ const ProductPage = () => {
       </TouchableOpacity>
     </View>
   );
-};
-
+}
 export default ProductPage;

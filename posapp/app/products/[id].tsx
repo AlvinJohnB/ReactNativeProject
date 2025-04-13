@@ -1,4 +1,4 @@
-import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, Image, PermissionsAndroid, Platform, Alert } from 'react-native'
+import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Button, Image, PermissionsAndroid, Platform, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
@@ -30,6 +30,40 @@ const ProductPage = () => {
   const [isScanning, setIsScanning] = useState(false) // State to toggle camera scanner
 
   const [loading, setLoading] = useState(false); // State to track loading status
+  const [editMode, setEditMode] = useState(false); // State to track edit mode
+
+  const [password, setPassword] = useState('') // State to store the entered password
+  const [isPasswordModalVisible, setPasswordModalVisible] = useState(false) // State to toggle the password modal
+  const [currentAction, setCurrentAction] = useState('') // State to track which action is being performed
+
+  const [ restockQuantity, setRestockQuantity] = useState(0) // State to store the restock quantity
+  const [isRestockModalVisible, setRestockModalVisible] = useState(false) // State to toggle the restock modal
+
+  // Function to handle password confirmation
+const handlePasswordConfirmation = (action: string) => {
+  setCurrentAction(action) // Set the current action (edit, delete, or restock)
+  setPasswordModalVisible(true) // Show the password modal
+}
+
+// Function to validate the password and perform the action
+const validatePasswordAndProceed = () => {
+  if (password === 'asd') { // Replace 'your_password' with the actual password logic
+    setPasswordModalVisible(false) // Hide the modal
+    setPassword('') // Clear the password field
+
+    // Perform the action based on the currentAction
+    if (currentAction === 'edit') {
+      editProduct()
+    } else if (currentAction === 'delete') {
+      handleDeleteProduct()
+    } else if (currentAction === 'restock') {
+      setRestockModalVisible(true) // Show the restock modal
+    }
+  } else {
+    Alert.alert('Invalid Password', 'The password you entered is incorrect.')
+  }
+}
+
 
   const getProduct = async () => {
     try {
@@ -37,16 +71,15 @@ const ProductPage = () => {
 
       // console.log(response.data.product);
       const product = response.data.product;
-      setFormData((prevData) => ({
-        ...prevData,
+      setFormData({
         name: product.name,
         sku: product.sku,
         stock: product.stock,
         price: product.price,
-        category: product.category,
+        category: product.category.name,
         retail_price: product.retail_price,
-      }));
-      setSelectedImage(product.imageUrl); // Set the selected image URI from the response
+      });
+      setSelectedImage(`${apiUrl}/uploads/${product.imageUrl}`); // Set the selected image URI from the response
     } catch (error) {
       console.error('Error fetching product:', error);
     }
@@ -119,66 +152,99 @@ const handleImagePicker = async () => {
 
   // Handle form submission
 
-  const handleAddProduct = async () => {
-
-    setLoading(true); // Show the ActivityIndicator
-      
-    // Validate required fields
-    const requiredFields: (keyof typeof formData)[] = ['name', 'sku', 'stock', 'price', 'category', 'retail_price'];
-    const missingFields = requiredFields.filter((field) => !formData[field]);
-  
-    if (missingFields.length > 0) {
-      setErrorMessage('All required fields must be filled.');
-      return;
-    }
+  const editProduct = async () => {
+    setLoading(true)
   
     try {
-      const formDataToSend = new FormData();
-
+      const formDataToSend = new FormData()
+  
       // Append form fields
       Object.keys(formData).forEach((key) => {
-        formDataToSend.append(key, formData[key as keyof typeof formData]);
-      });
+        formDataToSend.append(key, String(formData[key as keyof typeof formData]))
+      })
   
       // Append the image file
       if (selectedImage) {
-        let fileUri = selectedImage;
+        let fileUri = selectedImage
   
-        // Resolve content:// URIs to file:// URIs on Android
         if (selectedImage.startsWith('content://')) {
-          const fileInfo = await FileSystem.getInfoAsync(selectedImage);
-          fileUri = fileInfo.uri; // Convert content:// to file://
+          const fileInfo = await FileSystem.getInfoAsync(selectedImage)
+          fileUri = fileInfo.uri
         }
   
-        const fileName = fileUri.split('/').pop(); // Extract the file name
-        const response = await fetch(fileUri);
-        const blob = await response.blob();
+        const fileName = fileUri.split('/').pop()
+        const response = await fetch(fileUri)
+        const blob = await response.blob()
   
-        // Append the blob directly to FormData
         formDataToSend.append('image', {
           uri: fileUri,
           name: fileName || 'image.jpg',
-          type: blob.type || 'image/jpeg', // Use the blob's MIME type or default to 'image/jpeg'
-        } as any);
+          type: blob.type || 'image/jpeg',
+        } as any)
       }
   
-      // Send the form data to the backend
-      await axios.post(`${apiUrl}/product/add-product`, formDataToSend, {
+      await axios.put(`${apiUrl}/product/edit-product/${id}`, formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      });
-
-      router.push('/products'); // Navigate back to the products page
-      
+      })
+  
+      router.push('/products')
     } catch (error) {
-      console.error('Error adding product:', error);
-      setErrorMessage('Failed to add product. Please try again.');
+      console.error('Error editing product:', error)
+      setErrorMessage('Failed to edit product. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    finally {
-      setLoading(false); // Hide the ActivityIndicator
-    }
-  };
+  }
+
+  const handleEditProduct = () => {
+    setEditMode(!editMode) // Toggle edit mode
+  }
+
+  const handleDeleteProduct = async () => {
+    Alert.alert(
+      'Delete Product',
+      'Are you sure you want to delete this product?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true)
+            try {
+              await axios.delete(`${apiUrl}/product/delete-product/${id}`)
+              router.push('/products')
+            } catch (error) {
+              console.error('Error deleting product:', error)
+              setErrorMessage('Failed to delete product. Please try again.')
+            } finally {
+              setLoading(false)
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  const handleRestockProduct = async (qty: number) => {
+
+    setLoading(true)
+    setRestockModalVisible(false) // Hide the restock modal
+    try {
+        const newStock = formData.stock + qty
+        await axios.put(`${apiUrl}/product/restock-product/${id}`, { stock: newStock })
+        setFormData((prevData) => ({ ...prevData, stock: newStock }))
+        Alert.alert('Success', 'Product restocked successfully.')
+        } catch (error) {
+          console.error('Error restocking product:', error)
+          setErrorMessage('Failed to restock product. Please try again.')
+        } finally {
+          setLoading(false)
+        }
+  }
+  
 
   return (
     <View className="flex-1 bg-gray-100">
@@ -205,7 +271,7 @@ const handleImagePicker = async () => {
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
         <View className="w-full bg-white rounded-lg shadow-lg p-6">
           <Text className="text-2xl font-bold text-gray-900 text-center mb-6">
-            Product Details
+            {editMode ? `Edit Product`: `Product Details`}
           </Text>
 
           {/* Error Message */}
@@ -247,23 +313,26 @@ const handleImagePicker = async () => {
               placeholder="Enter product name"
               value={formData.name}
               onChangeText={(value) => handleInputChange('name', value)}
+              editable={editMode}
             />
           </View>
 
           <View className="flex-row items-center mb-4">
             <Text className="w-1/3 text-gray-700 font-bold">SKU:</Text>
             <TextInput
-              className="w-1/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
+              className={`${editMode ? `w-1/3` : `w-2/3`} p-2 border border-gray-300 rounded-lg focus:border-blue-500`}
               placeholder="Enter SKU"
               value={formData.sku}
               onChangeText={(value) => handleInputChange('sku', value)}
+              editable={editMode}
             />
-            <TouchableOpacity
+            {editMode ? <TouchableOpacity
               className="flex-1 ml-2 text-center p-3 bg-blue-500 rounded-lg"
               onPress={() => setIsScanning(true)}
             >
               <Text className="text-white text-center font-bold">Scan</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> : null}
+            
           </View>
 
           
@@ -299,6 +368,7 @@ const handleImagePicker = async () => {
               />
               ) : (
             <Picker
+              enabled={editMode}
               selectedValue={formData.category}
               onValueChange={(itemValue) => {
               if (itemValue === 'add_category') {
@@ -309,7 +379,7 @@ const handleImagePicker = async () => {
               }}
               style={{ flex: 1 }}
             >
-              <Picker.Item label="Select Category" value="" />
+              <Picker.Item label={formData.category} value={formData.category} />
               {categories.map((category) => (
               <Picker.Item key={category.name} label={category.name} value={category.name} />
               ))}
@@ -325,8 +395,10 @@ const handleImagePicker = async () => {
             <TextInput
               className="w-2/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
               placeholder="Enter stock quantity"
-              value={formData.stock}
+              value={formData.stock.toString()}
               onChangeText={(value) => handleInputChange('stock', value)}
+              keyboardType='numeric'
+              editable={editMode}
             />
           </View>
 
@@ -336,9 +408,10 @@ const handleImagePicker = async () => {
             <TextInput
               className="w-2/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
               placeholder="Enter price"
-              value={formData.price}
+              value={formData.price.toString()}
               onChangeText={(value) => handleInputChange('price', value)}
               keyboardType="numeric"
+              editable={editMode}
             />
           </View>
 
@@ -347,24 +420,168 @@ const handleImagePicker = async () => {
             <TextInput
               className="w-2/3 p-2 border border-gray-300 rounded-lg focus:border-blue-500"
               placeholder="Enter retail price"
-              value={formData.retail_price}
+              value={formData.retail_price.toString()}
               onChangeText={(value) => handleInputChange('retail_price', value)}
               keyboardType="numeric"
+              editable={editMode}
             />
           </View>
 
+
+          {/* Inline Buttons */}
+          <View className="flex-row justify-between mt-4">
+            {/* Edit Button */}
+            { editMode ? 
+            <TouchableOpacity
+            className="flex-1 bg-blue-500 text-white p-3 rounded-lg shadow-md active:bg-blue-600 mr-2"
+            onPress={() => {handlePasswordConfirmation('edit')}} // Function to handle editing the product
+            style={{ flexBasis: '30%' }} // Ensures each button takes up 30% of the row
+          >
+            <Text className="text-center text-white font-bold">Save</Text>
+          </TouchableOpacity>: 
+
+          <TouchableOpacity
+          className="flex-1 bg-blue-500 text-white p-3 rounded-lg shadow-md active:bg-blue-600 mr-2"
+          onPress={handleEditProduct} // Function to handle editing the product
+          style={{ flexBasis: '30%' }} // Ensures each button takes up 30% of the row
+        >
+          <Text className="text-center text-white font-bold">Edit</Text>
+        </TouchableOpacity>
+        }
+            
+
+            {/* Delete Button */}
+            {editMode ? <TouchableOpacity
+              className="flex-1 bg-red-500 text-white p-3 rounded-lg shadow-md active:bg-red-600 mr-2"
+              onPress={() => {handlePasswordConfirmation('delete')}} // Function to handle deleting the product
+              style={{ flexBasis: '30%' }} // Ensures each button takes up 30% of the row
+            >
+              <Text className="text-center text-white font-bold">Delete</Text>
+            </TouchableOpacity>:
+            null}
+            
+
+            {/* Restock Button */}
+            {editMode? null : 
+            <TouchableOpacity
+            className="flex-1 bg-green-500 text-white p-3 rounded-lg shadow-md active:bg-green-600"
+            onPress={() => {handlePasswordConfirmation('restock')}} // Function to handle restocking the product
+            style={{ flexBasis: '30%' }} // Ensures each button takes up 30% of the row
+          >
+            <Text className="text-center text-white font-bold">Restock</Text>
+          </TouchableOpacity>}
+            
+          </View>
+
+          {/* Password Confirmation Modal */}
+          <Modal
+          visible={isPasswordModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setPasswordModalVisible(false)} // Close the modal when the user presses back
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <View
+              style={{
+                width: '80%',
+                backgroundColor: 'white',
+                borderRadius: 10,
+                padding: 20,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 5,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                Enter Password
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ccc',
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 20,
+                }}
+                placeholder="Enter your password"
+                secureTextEntry={true}
+                value={password}
+                onChangeText={(text) => setPassword(text)}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Button title="Cancel" onPress={() => setPasswordModalVisible(false)} />
+                <Button title="Confirm" onPress={validatePasswordAndProceed} />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+          {/* Restock Modal */}
+          <Modal
+          visible={isRestockModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setRestockModalVisible(false)} // Close the modal when the user presses back
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <View
+              style={{
+                width: '80%',
+                backgroundColor: 'white',
+                borderRadius: 10,
+                padding: 20,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 5,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                Enter Quantity of Stock to Add
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ccc',
+                  borderRadius: 5,
+                  padding: 10,
+                  marginBottom: 20,
+                }}
+                placeholder="Enter quantity"
+                keyboardType="numeric"
+                value={restockQuantity.toString()}
+                onChangeText={(text) => setRestockQuantity(Number(text))}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Button title="Cancel" onPress={() => setRestockModalVisible(false)} />
+                <Button title="Confirm" onPress={()=> handleRestockProduct(restockQuantity)} />
+              </View>
+            </View>
+          </View>
+        </Modal>
           
     
 
           
 
-          {/* Submit Button */}
-          <TouchableOpacity
-            className="w-full bg-blue-500 text-white p-3 rounded-lg shadow-md active:bg-blue-600"
-            onPress={handleAddProduct}
-          >
-            <Text className="text-center text-white font-bold">Add Product</Text>
-          </TouchableOpacity>
+          
         </View>
       </ScrollView>
     </View>
